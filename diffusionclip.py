@@ -8,6 +8,7 @@ from PIL import Image
 import torch
 from torch import nn
 import torchvision.utils as tvu
+import torchvision.models as models
 
 from models.ddpm.diffusion import DDPM
 from models.improved_ddpm.script_util import i_DDPM
@@ -59,11 +60,14 @@ class DiffusionCLIP(object):
         # Multi-attributes editing
         self.img_size = 256
         self.text_size = 79 * 512
-        # Same as the original
-        # self.projection = nn.Sequential(
-        #     nn.Linear(self.img_size * self.img_size * 3 + self.text_size, self.img_size * self.img_size * 3),
-        #     nn.ReLU()
-        # ).to(self.device)
+        # ResNet for image feature extraction
+        self.resnet = models.resnet50(pretrained=True)
+        self.resnet = nn.Sequential(*list(self.resnet.children())[:-2])  # Remove the last FC layer and avgpool
+        # Adaptive pooling to fixed size output
+        self.adaptive_pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(2048 + self.text_size, self.img_size * self.img_size * 3)
+        # Activation function
+        self.relu = nn.ReLU()
 
     def clip_finetune(self):
         print(self.args.exp)
@@ -439,14 +443,17 @@ class DiffusionCLIP(object):
                 text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1)
                 print("text: ", text_embedding.shape)
                 # text:  torch.Size([1, 40448])
-                img_embedding = x0.clone()
-                img_embedding = img_embedding.view(img_embedding.shape[0], -1)
+                img_embedding = self.resnet(x0.clone())
+                img_embedding = self.adaptive_pool(img_embedding)
+                img_embedding = img_embedding.view(img_embedding.size(0), -1)
+                # img_embedding = img_embedding.view(img_embedding.shape[0], -1)
                 print("img: ", img_embedding.shape)
                 # img:  torch.Size([1, 196608])
-                embedding = torch.cat([img_embedding, text_embedding], dim=1)
-                print("concat: ", embedding.shape)
+                combined_embedding = torch.cat([img_embedding, text_embedding], dim=1)
+                print("concat: ", combined_embedding.shape)
                 # concat:  torch.Size([1, 237056])
-
+                # output = self.fc(combined_embedding)
+                # output = self.relu(output)
 
                 tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
 
