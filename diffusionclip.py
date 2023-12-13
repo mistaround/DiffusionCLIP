@@ -67,9 +67,6 @@ class DiffusionCLIP(object):
         # Adaptive pooling to fixed size output
         self.adaptive_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.text_compression = nn.Linear(self.text_size, self.compressed_text_size).to(self.device)
-        # Normalization layers
-        self.img_embedding_bn = nn.BatchNorm1d(2048).to(self.device)
-        self.text_embedding_ln = nn.LayerNorm(self.compressed_text_size).to(self.device)
 
         self.fc = nn.Linear(2048 + self.compressed_text_size, self.img_size * self.img_size * 3).to(self.device)
         # Activation function
@@ -447,12 +444,14 @@ class DiffusionCLIP(object):
                 x0 = img.to(self.config.device)
                 # TODO: Add projection layer
                 text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1).to(self.device)
-                text_embedding = self.text_embedding_ln(text_embedding.to(dtype=torch.float32))
+                text_embedding = self.text_compression(text_embedding.to(dtype=torch.float32))
+                text_embedding = nn.functional.normalize(text_embedding, p=2, dim=1)
                 # print("text: ", text_embedding.shape)
                 # text:  torch.Size([1, 40448])
-                img_embedding = self.img_embedding_bn(self.resnet(x0.clone())).to(self.device)
+                img_embedding = self.resnet(x0.clone()).to(self.device)
                 img_embedding = self.adaptive_pool(img_embedding)
                 img_embedding = img_embedding.view(img_embedding.size(0), -1)
+                img_embedding = nn.functional.normalize(img_embedding, p=2, dim=1)
                 # img_embedding = img_embedding.view(img_embedding.shape[0], -1)
                 # print("img: ", img_embedding.shape)
                 # img:  torch.Size([1, 196608])
