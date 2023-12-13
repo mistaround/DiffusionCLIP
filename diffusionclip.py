@@ -951,6 +951,31 @@ class DiffusionCLIP(object):
         tvu.save_image(img, os.path.join(self.args.image_folder, f'0_orig.png'))
         x0 = (img - 0.5) * 2.
 
+        clip_loss_func = CLIPLoss(
+            self.device,
+            lambda_direction=1,
+            lambda_patch=0,
+            lambda_global=0,
+            lambda_manifold=0,
+            lambda_texture=0,
+            clip_model=self.args.clip_model_name)
+
+        text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1).to(self.device)
+        text_embedding = self.text_compression(text_embedding.to(dtype=torch.float32))
+        text_embedding = nn.functional.normalize(text_embedding, p=2, dim=1)
+
+        img_embedding = self.resnet(x0.clone()).to(self.device)
+        img_embedding = self.adaptive_pool(img_embedding)
+        img_embedding = img_embedding.view(img_embedding.size(0), -1)
+        img_embedding = nn.functional.normalize(img_embedding, p=2, dim=1)
+
+        combined_embedding = torch.cat([img_embedding, text_embedding], dim=1)
+        output = self.fc(combined_embedding)
+        output = self.relu(output)
+        output = output.view(-1, 3, self.img_size, self.img_size)
+
+        x0 = output.clone()
+
         # ----------- Models -----------#
         if self.config.data.dataset == "LSUN":
             if self.config.data.category == "bedroom":
