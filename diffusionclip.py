@@ -435,6 +435,8 @@ class DiffusionCLIP(object):
 
             for step, img in enumerate(loader):
                 x0 = img.to(self.config.device)
+                print(x0)
+                print(x0.shape)
                 tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
 
                 x = x0.clone()
