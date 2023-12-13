@@ -58,7 +58,7 @@ class DiffusionCLIP(object):
 
         # Multi-attributes editing
         self.img_size = 256
-        self.text_size = 79 * 77
+        self.text_size = 79 * 512
         # Same as the original
         # self.projection = nn.Sequential(
         #     nn.Linear(self.img_size * self.img_size * 3 + self.text_size, self.img_size * self.img_size * 3),
@@ -436,13 +436,16 @@ class DiffusionCLIP(object):
             for step, img in enumerate(loader):
                 x0 = img.to(self.config.device)
                 # TODO: Add projection layer
-                trg_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1)
-                print("text: ", trg_embedding.shape)
-                tmp = x0.clone()
-                tmp = tmp.view(tmp.shape[0], -1)
-                print("img: ", tmp.shape)
-                tmp = torch.cat([tmp, trg_embedding.repeat(tmp.shape[0], 1)], dim=1)
-                print("concat: ", tmp.shape)
+                text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1)
+                print("text: ", text_embedding.shape)
+                # text:  torch.Size([1, 40448])
+                img_embedding = x0.clone()
+                img_embedding = img_embedding.view(img_embedding.shape[0], -1)
+                print("img: ", img_embedding.shape)
+                # img:  torch.Size([1, 196608])
+                embedding = torch.cat([img_embedding, text_embedding], dim=1)
+                print("concat: ", embedding.shape)
+                # concat:  torch.Size([1, 237056])
 
 
                 tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
