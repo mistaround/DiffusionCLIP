@@ -62,14 +62,14 @@ class DiffusionCLIP(object):
         self.text_size = 79 * 512
         self.compressed_text_size = 2048
         # ResNet for image feature extraction
-        self.resnet = models.resnet50(pretrained=True)
+        self.resnet = models.resnet50(pretrained=True).to(self.device)
         self.resnet = nn.Sequential(*list(self.resnet.children())[:-2])  # Remove the last FC layer and avgpool
         # Adaptive pooling to fixed size output
         self.adaptive_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.text_compression = nn.Linear(self.text_size, self.compressed_text_size)
-        self.fc = nn.Linear(2048 + self.compressed_text_size, self.img_size * self.img_size * 3)
+        self.text_compression = nn.Linear(self.text_size, self.compressed_text_size).to(self.device)
+        self.fc = nn.Linear(2048 + self.compressed_text_size, self.img_size * self.img_size * 3).to(self.device)
         # Activation function
-        self.relu = nn.ReLU()
+        self.relu = nn.ReLU().to(self.device)
 
     def clip_finetune(self):
         print(self.args.exp)
@@ -442,11 +442,11 @@ class DiffusionCLIP(object):
             for step, img in enumerate(loader):
                 x0 = img.to(self.config.device)
                 # TODO: Add projection layer
-                text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1)
+                text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1).to(self.device)
                 text_embedding = self.text_compression(text_embedding)
                 print("text: ", text_embedding.shape)
                 # text:  torch.Size([1, 40448])
-                img_embedding = self.resnet(x0.clone())
+                img_embedding = self.resnet(x0.clone()).to(self.device)
                 img_embedding = self.adaptive_pool(img_embedding)
                 img_embedding = img_embedding.view(img_embedding.size(0), -1)
                 # img_embedding = img_embedding.view(img_embedding.shape[0], -1)
