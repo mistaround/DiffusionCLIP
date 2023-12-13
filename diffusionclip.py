@@ -373,8 +373,7 @@ class DiffusionCLIP(object):
 
         # ----------- Optimizer and Scheduler -----------#
         print(f"Setting optimizer with lr={self.args.lr_clip_finetune}")
-        addtional_params = list(self.resnet.parameters()) + list(self.text_compression.parameters()) + list(self.fc.parameters())
-        optim_ft = torch.optim.Adam(list(model.parameters()) + addtional_params, weight_decay=0, lr=self.args.lr_clip_finetune)
+        optim_ft = torch.optim.Adam(model.parameters(), weight_decay=0, lr=self.args.lr_clip_finetune)
         # optim_ft = torch.optim.SGD(model.parameters(), weight_decay=0, lr=self.args.lr_clip_finetune)#, momentum=0.9)
         init_opt_ckpt = optim_ft.state_dict()
         scheduler_ft = torch.optim.lr_scheduler.StepLR(optim_ft, step_size=1, gamma=self.args.sch_gamma)
@@ -677,7 +676,8 @@ class DiffusionCLIP(object):
 
         # ----------- Optimizer and Scheduler -----------#
         print(f"Setting optimizer with lr={self.args.lr_clip_finetune}")
-        addtional_params = list(self.resnet.parameters()) + list(self.text_compression.parameters()) + list(self.fc.parameters())
+        # TODO: Add projection layer parameters
+        addtional_params = list(self.CLIP_to_img.parameters()) + list(self.stack_to_input.parameters())
         optim_ft = torch.optim.Adam(list(model.parameters()) + addtional_params, weight_decay=0, lr=self.args.lr_clip_finetune)
         # optim_ft = torch.optim.SGD(model.parameters(), weight_decay=0, lr=self.args.lr_clip_finetune)#, momentum=0.9)
         init_opt_ckpt = optim_ft.state_dict()
