@@ -26,7 +26,7 @@ BASE_DIR=$2
     rm $ZIP_FILE
 
     # raw images to LMDB format
-    TARGET_SIZE=256,1024
+    TARGET_SIZE=256
     for DATASET_TYPE in "train" "test" "val"; do
         python utils/prepare_lmdb_data.py --out $DATASET_FOLDER/LMDB_$DATASET_TYPE --size $TARGET_SIZE $DATASET_FOLDER/raw_images/$DATASET_TYPE
     done
