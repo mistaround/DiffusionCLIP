@@ -77,7 +77,7 @@ class DiffusionCLIP(object):
             elif self.config.data.category == "church_outdoor":
                 url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/church_outdoor.ckpt"
         elif self.config.data.dataset == "CelebA_HQ":
-            url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/celeba_hq.ckpt"
+            url = "https://huggingface.co/gwang-kim/DiffusionCLIP-CelebA_HQ/resolve/main/celeba_hq.ckpt "
         elif self.config.data.dataset == "AFHQ":
             pass
         else:
@@ -323,7 +323,7 @@ class DiffusionCLIP(object):
             elif self.config.data.category == "church_outdoor":
                 url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/church_outdoor.ckpt"
         elif self.config.data.dataset == "CelebA_HQ":
-            url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/celeba_hq.ckpt"
+            url = "https://huggingface.co/gwang-kim/DiffusionCLIP-CelebA_HQ/resolve/main/celeba_hq.ckpt "
         elif self.config.data.dataset in ["FFHQ", "AFHQ", "IMAGENET"]:
             pass
         else:
@@ -641,7 +641,7 @@ class DiffusionCLIP(object):
             elif self.config.data.category == "church_outdoor":
                 url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/church_outdoor.ckpt"
         elif self.config.data.dataset == "CelebA_HQ":
-            url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/celeba_hq.ckpt"
+            url = "https://huggingface.co/gwang-kim/DiffusionCLIP-CelebA_HQ/resolve/main/celeba_hq.ckpt "
         elif self.config.data.dataset in ["FFHQ", "AFHQ", "IMAGENET"]:
             pass
         else:
@@ -765,7 +765,7 @@ class DiffusionCLIP(object):
             elif self.config.data.category == "church_outdoor":
                 url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/church_outdoor.ckpt"
         elif self.config.data.dataset == "CelebA_HQ":
-            url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/celeba_hq.ckpt"
+            url = "https://huggingface.co/gwang-kim/DiffusionCLIP-CelebA_HQ/resolve/main/celeba_hq.ckpt "
         elif self.config.data.dataset in ["FFHQ", "AFHQ", "IMAGENET"]:
             pass
         else:
@@ -1090,7 +1090,7 @@ class DiffusionCLIP(object):
             elif self.config.data.category == "church_outdoor":
                 url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/church_outdoor.ckpt"
         elif self.config.data.dataset == "CelebA_HQ":
-            url = "https://image-editing-test-12345.s3-us-west-2.amazonaws.com/checkpoints/celeba_hq.ckpt"
+            url = "https://huggingface.co/gwang-kim/DiffusionCLIP-CelebA_HQ/resolve/main/celeba_hq.ckpt "
         elif self.config.data.dataset == "AFHQ":
             pass
         else:
