@@ -6,7 +6,7 @@ DATASET=$1
 BASE_DIR=$2
 
     if [ $DATASET == "celeba_hq" ]; then
-        URL="https://docs.google.com/uc?export=download&id=1R72NB79CX0MpnmWSli2SMu-Wp-M0xI-o"
+        # URL="https://docs.google.com/uc?export=download&id=1R72NB79CX0MpnmWSli2SMu-Wp-M0xI-o"
         DATASET_FOLDER="./data/celeba_hq"
         ZIP_FILE=$DATASET_FOLDER/celeba_hq_raw.zip
     elif  [ $DATASET == "afhq" ]; then
