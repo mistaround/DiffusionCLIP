@@ -59,18 +59,28 @@ class DiffusionCLIP(object):
 
         # Multi-attributes editing
         self.img_size = 256
-        self.text_size = 79 * 512
-        self.compressed_text_size = 2048
-        # ResNet for image feature extraction
-        self.resnet = models.resnet50(pretrained=True).to(self.device)
-        self.resnet = nn.Sequential(*list(self.resnet.children())[:-2])  # Remove the last FC layer and avgpool
-        # Adaptive pooling to fixed size output
-        self.adaptive_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.text_compression = nn.Linear(self.text_size, self.compressed_text_size).to(self.device)
-
-        self.fc = nn.Linear(2048 + self.compressed_text_size, self.img_size * self.img_size * 3).to(self.device)
-        # Activation function
-        self.relu = nn.ReLU().to(self.device)
+        self.text_encoding_size = 79 * 512
+        self.compressed_text_size = 1024
+        self.text_to_img_size = 32 * 32 * 1 # 32 -> 64 -> 128 -> 256
+        # CLIP to 256 * 256 * 1
+        self.CLIP_to_img = nn.Sequential(
+            nn.Linear(self.text_size, self.compressed_text_size),
+            nn.ReLU(),
+            nn.Linear(self.compressed_text_size, self.text_to_img_size),
+            nn.ReLU(),
+            nn.Unflatten(-1, (1, 32, 32)),  # Reshape to (batch_size, channels, height, width)
+            nn.ConvTranspose2d(1, 1, kernel_size=4, stride=2, padding=1),  # Upscale to 64x64
+            nn.ReLU(),
+            nn.ConvTranspose2d(1, 1, kernel_size=4, stride=2, padding=1),  # Upscale to 128x128
+            nn.ReLU(),
+            nn.ConvTranspose2d(1, 1, kernel_size=4, stride=2, padding=1),  # Upscale to 256x256
+            nn.ReLU()
+        ).to(self.device)
+        # Stacked CLIP and Image (256 * 256 * 4) to input size (256 * 256 * 3)
+        self.stack_to_input = nn.Sequential(
+            nn.Conv2d(in_channels=4, out_channels=3, kernel_size=(256, 256), stride=1, padding=0),
+            nn.ReLU()
+        ).to(self.device)
 
     def clip_finetune(self):
         print(self.args.exp)
@@ -382,6 +392,9 @@ class DiffusionCLIP(object):
             id_loss_func = id_loss.IDLoss().to(self.device).eval()
         else:
             id_loss_func = None
+        # TODO: Projection layer loss function
+
+
 
         # ----------- Precompute Latents -----------#
         print("Prepare identity latent")
@@ -443,28 +456,18 @@ class DiffusionCLIP(object):
 
             for step, img in enumerate(loader):
                 x0 = img.to(self.config.device)
+                tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
+                
                 # TODO: Add projection layer
                 text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1).to(self.device)
-                text_embedding = self.text_compression(text_embedding.to(dtype=torch.float32))
-                text_embedding = nn.functional.normalize(text_embedding, p=2, dim=1)
-                # print("text: ", text_embedding.shape)
-                # text:  torch.Size([1, 40448])
-                img_embedding = self.resnet(x0.clone()).to(self.device)
-                img_embedding = self.adaptive_pool(img_embedding)
-                img_embedding = img_embedding.view(img_embedding.size(0), -1)
-                img_embedding = nn.functional.normalize(img_embedding, p=2, dim=1)
-                # img_embedding = img_embedding.view(img_embedding.shape[0], -1)
-                # print("img: ", img_embedding.shape)
-                # img:  torch.Size([1, 196608])
-                combined_embedding = torch.cat([img_embedding, text_embedding], dim=1)
-                # print("concat: ", combined_embedding.shape)
-                # concat:  torch.Size([1, 237056])
-                output = self.fc(combined_embedding)
-                output = self.relu(output)
-                output = output.view(-1, 3, self.img_size, self.img_size)
+                text_reshaped = self.CLIP_to_img(text_embedding)
+                print("text: ", text_reshaped.shape)
+                text_with_img = torch.cat([x0, text_reshaped], dim=1)  # Concatenate along the channel dimension
+                print("text_with_img: ", text_with_img.shape)
+                combined_embedding = self.stack_to_input(text_with_img)
+                print("combined_embedding: ", combined_embedding.shape)
 
-                tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
-                x = output.clone()
+                x = x0.clone()
                 model.eval()
                 time_s = time.time()
                 with torch.no_grad():
@@ -951,6 +954,7 @@ class DiffusionCLIP(object):
         tvu.save_image(img, os.path.join(self.args.image_folder, f'0_orig.png'))
         x0 = (img - 0.5) * 2.
 
+        # TODO: Add projection layer
         clip_loss_func = CLIPLoss(
             self.device,
             lambda_direction=1,
@@ -961,20 +965,10 @@ class DiffusionCLIP(object):
             clip_model=self.args.clip_model_name)
 
         text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1).to(self.device)
-        text_embedding = self.text_compression(text_embedding.to(dtype=torch.float32))
-        text_embedding = nn.functional.normalize(text_embedding, p=2, dim=1)
-
-        img_embedding = self.resnet(x0.clone()).to(self.device)
-        img_embedding = self.adaptive_pool(img_embedding)
-        img_embedding = img_embedding.view(img_embedding.size(0), -1)
-        img_embedding = nn.functional.normalize(img_embedding, p=2, dim=1)
-
-        combined_embedding = torch.cat([img_embedding, text_embedding], dim=1)
-        output = self.fc(combined_embedding)
-        output = self.relu(output)
-        output = output.view(-1, 3, self.img_size, self.img_size)
-
-        x0 = output.clone()
+        text_reshaped = self.CLIP_to_img(text_embedding)
+        text_with_img = torch.cat([x0, text_reshaped], dim=1)  # Concatenate along the channel dimension
+        combined_embedding = self.stack_to_input(text_with_img)
+        x0 = combined_embedding
 
         # ----------- Models -----------#
         if self.config.data.dataset == "LSUN":
