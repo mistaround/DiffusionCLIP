@@ -458,12 +458,12 @@ class DiffusionCLIP(object):
                 combined_embedding = torch.cat([img_embedding, text_embedding], dim=1)
                 # print("concat: ", combined_embedding.shape)
                 # concat:  torch.Size([1, 237056])
-                # output = self.fc(combined_embedding)
-                # output = self.relu(output)
+                output = self.fc(combined_embedding)
+                output = self.relu(output)
+                output = output.view(-1, 3, self.img_size, self.img_size)
 
                 tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
-                print("x0: ", x0.shape)
-                x = x0.clone()
+                x = output.clone()
                 model.eval()
                 time_s = time.time()
                 with torch.no_grad():
