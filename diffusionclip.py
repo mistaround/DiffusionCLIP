@@ -80,7 +80,7 @@ class DiffusionCLIP(object):
         ).to(self.device)
         # Stacked CLIP and Image (256 * 256 * 4) to input size (256 * 256 * 3)
         self.stack_to_input = nn.Sequential(
-            nn.Conv2d(in_channels=4, out_channels=3, kernel_size=(256, 256), stride=1, padding=0),
+            nn.Conv2d(in_channels=4, out_channels=3, kernel_size=(1, 1), stride=1, padding=0),
             nn.ReLU()
         ).to(self.device)
 
@@ -763,11 +763,8 @@ class DiffusionCLIP(object):
                 # TODO: Add projection layer
                 text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1).to(self.device)
                 text_reshaped = self.CLIP_to_img(text_embedding.to(dtype=torch.float32))
-                print("text: ", text_reshaped.shape)
                 text_with_img = torch.cat([x0, text_reshaped], dim=1)  # Concatenate along the channel dimension
-                print("text_with_img: ", text_with_img.shape)
-                combined_embedding = self.stack_to_input(text_with_img)
-                print("combined_embedding: ", combined_embedding.shape)
+                combined_embedding = None
 
                 x = x0.clone()
                 model.eval()
