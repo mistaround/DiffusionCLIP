@@ -58,12 +58,12 @@ class DiffusionCLIP(object):
 
         # Multi-attributes editing
         self.img_size = 256
-        self.text_size = 768 * 77
+        self.text_size = 79 * 77
         # Same as the original
-        # self.projection = nn.Sequential(
-        #     nn.Linear(self.img_size * self.img_size * 3 + self.text_size, self.img_size * self.img_size * 3),
-        #     nn.ReLU()
-        # ).to(self.device)
+        self.projection = nn.Sequential(
+            nn.Linear(self.img_size * self.img_size * 3 + self.text_size, self.img_size * self.img_size * 3),
+            nn.ReLU()
+        ).to(self.device)
 
     def clip_finetune(self):
         print(self.args.exp)
@@ -435,8 +435,16 @@ class DiffusionCLIP(object):
 
             for step, img in enumerate(loader):
                 x0 = img.to(self.config.device)
-                print(x0)
-                print(x0.shape)
+                # TODO: Add projection layer
+                trg_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1)
+                print("text: ", trg_embedding.shape)
+                tmp = x0.clone()
+                tmp = tmp.view(tmp.shape[0], -1)
+                print("img: ", tmp.shape)
+                tmp = torch.cat([tmp, trg_embedding.repeat(tmp.shape[0], 1)], dim=1)
+                print("concat: ", tmp.shape)
+
+
                 tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
 
                 x = x0.clone()

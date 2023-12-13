@@ -68,8 +68,6 @@ class CLIPLoss(torch.nn.Module):
         return clip.tokenize(strings).to(self.device)
 
     def encode_text(self, tokens: list) -> torch.Tensor:
-        print(tokens.shape)
-        print(tokens)
         return self.model.encode_text(tokens)
 
     def encode_images(self, images: torch.Tensor) -> torch.Tensor:
