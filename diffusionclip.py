@@ -393,8 +393,6 @@ class DiffusionCLIP(object):
             id_loss_func = id_loss.IDLoss().to(self.device).eval()
         else:
             id_loss_func = None
-        # TODO: Projection layer loss function
-
 
         # ----------- Precompute Latents -----------#
         print("Prepare identity latent")
@@ -458,9 +456,8 @@ class DiffusionCLIP(object):
                 x0 = img.to(self.config.device)
                 tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
 
-                # TODO: Add projection layer
                 text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1).to(self.device)
-                text_reshaped = self.CLIP_to_img(text_embedding)
+                text_reshaped = self.CLIP_to_img(text_embedding.to(dtype=torch.float32))
                 print("text: ", text_reshaped.shape)
                 text_with_img = torch.cat([x0, text_reshaped], dim=1)  # Concatenate along the channel dimension
                 print("text_with_img: ", text_with_img.shape)
@@ -765,7 +762,7 @@ class DiffusionCLIP(object):
 
                 # TODO: Add projection layer
                 text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1).to(self.device)
-                text_reshaped = self.CLIP_to_img(text_embedding)
+                text_reshaped = self.CLIP_to_img(text_embedding.to(dtype=torch.float32))
                 print("text: ", text_reshaped.shape)
                 text_with_img = torch.cat([x0, text_reshaped], dim=1)  # Concatenate along the channel dimension
                 print("text_with_img: ", text_with_img.shape)
@@ -822,6 +819,7 @@ class DiffusionCLIP(object):
             torch.save(img_lat_pairs, pairs_path)
 
         # ----------- Finetune Diffusion Models -----------#
+        # TODO: add new loss
         print("Start finetuning")
         print(f"Sampling type: {self.args.sample_type.upper()} with eta {self.args.eta}")
         if self.args.n_train_step != 0:
