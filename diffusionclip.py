@@ -60,10 +60,10 @@ class DiffusionCLIP(object):
         self.img_size = 256
         self.text_size = 79 * 77
         # Same as the original
-        self.projection = nn.Sequential(
-            nn.Linear(self.img_size * self.img_size * 3 + self.text_size, self.img_size * self.img_size * 3),
-            nn.ReLU()
-        ).to(self.device)
+        # self.projection = nn.Sequential(
+        #     nn.Linear(self.img_size * self.img_size * 3 + self.text_size, self.img_size * self.img_size * 3),
+        #     nn.ReLU()
+        # ).to(self.device)
 
     def clip_finetune(self):
         print(self.args.exp)
