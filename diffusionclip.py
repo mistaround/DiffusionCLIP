@@ -57,21 +57,6 @@ class DiffusionCLIP(object):
             self.src_txts = SRC_TRG_TXT_DIC[self.args.edit_attr][0]
             self.trg_txts = SRC_TRG_TXT_DIC[self.args.edit_attr][1]
 
-        # Multi-attributes editing
-        self.img_size = 256
-        self.text_size = 79 * 512
-        self.compressed_text_size = 2048
-        # ResNet for image feature extraction
-        self.resnet = models.resnet50(pretrained=True).to(self.device)
-        self.resnet = nn.Sequential(*list(self.resnet.children())[:-2])  # Remove the last FC layer and avgpool
-        # Adaptive pooling to fixed size output
-        self.adaptive_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.text_compression = nn.Linear(self.text_size, self.compressed_text_size).to(self.device)
-
-        self.fc = nn.Linear(2048 + self.compressed_text_size, self.img_size * self.img_size * 3).to(self.device)
-        # Activation function
-        self.relu = nn.ReLU().to(self.device)
-
     def clip_finetune(self):
         print(self.args.exp)
         print(f'   {self.src_txts}')
@@ -361,8 +346,7 @@ class DiffusionCLIP(object):
 
         # ----------- Optimizer and Scheduler -----------#
         print(f"Setting optimizer with lr={self.args.lr_clip_finetune}")
-        addtional_params = list(self.resnet.parameters()) + list(self.text_compression.parameters()) + list(self.fc.parameters())
-        optim_ft = torch.optim.Adam(list(model.parameters()) + addtional_params, weight_decay=0, lr=self.args.lr_clip_finetune)
+        optim_ft = torch.optim.Adam(model.parameters(), weight_decay=0, lr=self.args.lr_clip_finetune)
         # optim_ft = torch.optim.SGD(model.parameters(), weight_decay=0, lr=self.args.lr_clip_finetune)#, momentum=0.9)
         init_opt_ckpt = optim_ft.state_dict()
         scheduler_ft = torch.optim.lr_scheduler.StepLR(optim_ft, step_size=1, gamma=self.args.sch_gamma)
@@ -443,28 +427,8 @@ class DiffusionCLIP(object):
 
             for step, img in enumerate(loader):
                 x0 = img.to(self.config.device)
-                # TODO: Add projection layer
-                text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1).to(self.device)
-                text_embedding = self.text_compression(text_embedding.to(dtype=torch.float32))
-                text_embedding = nn.functional.normalize(text_embedding, p=2, dim=1)
-                # print("text: ", text_embedding.shape)
-                # text:  torch.Size([1, 40448])
-                img_embedding = self.resnet(x0.clone()).to(self.device)
-                img_embedding = self.adaptive_pool(img_embedding)
-                img_embedding = img_embedding.view(img_embedding.size(0), -1)
-                img_embedding = nn.functional.normalize(img_embedding, p=2, dim=1)
-                # img_embedding = img_embedding.view(img_embedding.shape[0], -1)
-                # print("img: ", img_embedding.shape)
-                # img:  torch.Size([1, 196608])
-                combined_embedding = torch.cat([img_embedding, text_embedding], dim=1)
-                # print("concat: ", combined_embedding.shape)
-                # concat:  torch.Size([1, 237056])
-                output = self.fc(combined_embedding)
-                output = self.relu(output)
-                output = output.view(-1, 3, self.img_size, self.img_size)
-
                 tvu.save_image((x0 + 1) * 0.5, os.path.join(self.args.image_folder, f'{mode}_{step}_0_orig.png'))
-                x = output.clone()
+                x = x0.clone()
                 model.eval()
                 time_s = time.time()
                 with torch.no_grad():
@@ -950,31 +914,6 @@ class DiffusionCLIP(object):
         img = img.to(self.config.device)
         tvu.save_image(img, os.path.join(self.args.image_folder, f'0_orig.png'))
         x0 = (img - 0.5) * 2.
-
-        clip_loss_func = CLIPLoss(
-            self.device,
-            lambda_direction=1,
-            lambda_patch=0,
-            lambda_global=0,
-            lambda_manifold=0,
-            lambda_texture=0,
-            clip_model=self.args.clip_model_name)
-
-        text_embedding = clip_loss_func.get_text_features(self.trg_txts).view(1, -1).to(self.device)
-        text_embedding = self.text_compression(text_embedding.to(dtype=torch.float32))
-        text_embedding = nn.functional.normalize(text_embedding, p=2, dim=1)
-
-        img_embedding = self.resnet(x0.clone()).to(self.device)
-        img_embedding = self.adaptive_pool(img_embedding)
-        img_embedding = img_embedding.view(img_embedding.size(0), -1)
-        img_embedding = nn.functional.normalize(img_embedding, p=2, dim=1)
-
-        combined_embedding = torch.cat([img_embedding, text_embedding], dim=1)
-        output = self.fc(combined_embedding)
-        output = self.relu(output)
-        output = output.view(-1, 3, self.img_size, self.img_size)
-
-        x0 = output.clone()
 
         # ----------- Models -----------#
         if self.config.data.dataset == "LSUN":
