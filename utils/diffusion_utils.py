@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from diffusers import KDPM2DiscreteScheduler
 
 
 def get_beta_schedule(*, beta_start, beta_end, num_diffusion_timesteps):
@@ -112,6 +113,15 @@ def denoising_step(xt, t, t_next, *,
             c1 = eta * ((1 - at / (at_next)) * (1 - at_next) / (1 - at)).sqrt()
             c2 = ((1 - at_next) - c1 ** 2).sqrt()
             xt_next = at_next.sqrt() * x0_t + c2 * et + c1 * torch.randn_like(xt)
+        print("xt_next", xt_next.shape)
+    elif sampling_type == 'kdpm2':
+        # model_output (torch.FloatTensor) — The direct output from learned diffusion model.
+        # timestep (float) — The current discrete timestep in the diffusion chain.
+        # sample (torch.FloatTensor) — A current instance of a sample created by the diffusion process.
+        # return_dict (bool) — Whether or not to return a SchedulerOutput or tuple.
+        scheduler = KDPM2DiscreteScheduler()
+        xt_next = scheduler.step(xt, t, torch.randn_like(xt), False)[0]
+        print("xt_next", xt_next.shape)
 
     if out_x0_t == True:
         return xt_next, x0_t
